@@ -2,15 +2,13 @@
     William Kepley
 -}
 
--- data Tag =  H1 [Exp] | H2 [Exp] | H3 [Exp] | H4 [Exp] | H5 [Exp] 
---             | H6 [Exp] | Par [Exp] | Bold [Exp] | Under [Exp] | OList [Exp] 
---             | UList [Exp] | LI [Exp] | Emph [Exp] | P [Exp]
---             deriving Show
-
-data Exp =  Text String | H1 [Exp] | H2 [Exp] | H3 [Exp] | H4 [Exp] | H5 [Exp] 
+data Tag =  H1 [Exp] | H2 [Exp] | H3 [Exp] | H4 [Exp] | H5 [Exp] 
             | H6 [Exp] | Par [Exp] | Bold [Exp] | Under [Exp] | OList [Exp] 
-            | UList [Exp] | LI [Exp] | Emph [Exp] | Hash | Word String 
-            | HTML [Exp] | LHTML | RHTML | NewLine | P [Exp] | DA 
+            | UList [Exp] | LI [Exp] | Emph [Exp] | P [Exp]
+            deriving Show
+
+data Exp =  Text String | Hash | Word String | PA Tag | Comb [Exp]
+            | HTML [Exp] | LHTML | RHTML | NewLine | DA 
             deriving Show
 
 
@@ -68,20 +66,20 @@ sr :: [Exp] -> [Exp] -> [Exp]
 sr (NewLine : Word s : stack) input = sr (Text s : stack) input
 sr (Word t : Word s : stack) input = sr (Text (s ++ " " ++ t) : stack) input
 sr (Word w : Text t : stack) input = sr (Text (t ++ " " ++ w) : stack) input 
-sr (Bold x : Text t : stack) input = sr (Comb [Text t, Bold x] : stack) input
+sr (PA (Bold x) : Text t : stack) input = sr (Comb [Text t, PA (Bold x)] : stack) input
 
-sr (DA : Text t : DA : stack) input = sr (Bold [Text t] : stack) input 
-sr (DA : Word w : DA : stack) input = sr (Bold [Word w] : stack) input 
+sr (DA : Text t : DA : stack) input = sr (PA (Bold [Text t]) : stack) input 
+sr (DA : Word w : DA : stack) input = sr (PA (Bold [Word w]) : stack) input 
 
-sr (Text s : Hash : stack) input = sr (H1 [Text s] : stack) input 
-sr (Word w : H1 [Text t] : stack) input = sr (H1 [Text (t ++ " " ++ w)] : stack) input
-sr (Bold b : H1 h : stack) input = sr (H1 (h ++ [Bold b]) : stack) input
-sr (NewLine : H1 x : stack) input = sr (H1 x : stack) input
+sr (Text s : Hash : stack) input = sr (PA (H1 [Text s]) : stack) input 
+sr (Word w : PA (H1 [Text t]) : stack) input = sr (PA (H1 [Text (t ++ " " ++ w)]) : stack) input
+sr (PA t : PA (H1 h) : stack) input = sr (PA (H1 (h ++ [PA t])) : stack) input
+sr (NewLine : PA (H1 x) : stack) input = sr (PA (H1 x) : stack) input
 
 
 sr (RHTML : stack) input = sr (HTML [] : stack) input
 sr (LHTML : stack) input = sr (stack) input
-sr (HTML xs : H1 x : stack) input = sr (HTML ((H1 x):xs) : stack) input 
+sr (HTML xs : PA (H1 x) : stack) input = sr (HTML (PA (H1 x):xs) : stack) input 
 
 sr stack    (i:input) = sr (i:stack) input 
 sr stack [] = stack 
@@ -98,8 +96,8 @@ convert ::  HTML -> String
 convert [] = ""
 convert (Word w : xs) = w ++ convert xs
 convert (Text t : xs) = t ++ convert xs
-convert (Bold b : xs) = "<strong>" ++ convert b ++ "</strong>" ++ convert xs
-convert (H1 x : xs) = "<h1>" ++ convert x ++ "</h1>" ++ convert xs
+convert (PA (Bold b) : xs) = "<strong>" ++ convert b ++ "</strong>" ++ convert xs
+convert (PA (H1 x) : xs) = "<h1>" ++ convert x ++ "</h1>" ++ convert xs
 
 main :: IO ()
 main = do 
