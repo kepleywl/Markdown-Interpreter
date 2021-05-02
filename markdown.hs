@@ -9,7 +9,7 @@ data Tag =  H1 [Exp] | H2 [Exp] | H3 [Exp] | H4 [Exp] | H5 [Exp]
 
 data Exp =  Text String | Hash | Word String | PA Tag | Comb [Exp]
             | HTML [Exp] | LHTML | RHTML | NewLine | DA | AA | TA 
-            | BB
+            | BB | Tab
             deriving Show
 
 
@@ -27,16 +27,12 @@ preproc ('#' : xs) = " # " ++ preproc xs
 preproc ('>' : xs) = " > " ++ preproc xs
 preproc (' ' : ' ' : '\n' : xs) = " <br> " ++ preproc xs 
 preproc ('\n' : xs) = " \\n " ++ preproc xs
+preproc ('\t' : xs) = " \\t " ++ preproc xs
+preproc (' ' : ' ' : ' ' : ' ' : xs) = " \\t " ++ preproc xs
 preproc (x : xs) = x : preproc xs
 
 
 classify :: String -> Exp 
--- classify ('#':'#':'#':'#':'#':'#':s) = H6 (classify s)
--- classify ('#':'#':'#':'#':'#':s) = H5 (classify s)
--- classify ('#':'#':'#':'#':s) = H4 (classify s)
--- classify ('#':'#':'#':s) = H3 (classify s)
--- classify ('#':'#':s) = H2 (classify s)
--- classify ('#':s) = H1 (classify s)
 classify "#" = Hash
 classify "***" = TA 
 classify "___" = TA
@@ -45,6 +41,7 @@ classify "__" = DA
 classify "*" = AA
 classify "_" = AA 
 classify "\\n" = NewLine 
+classify "\\t" = Tab
 classify "<br>" = PA (BR)
 classify ">" = BB
 
@@ -57,17 +54,6 @@ sr (NewLine : Word s : stack) input = sr (Text s : stack) input
 sr (Word t : Word s : stack) input = sr (Text (s ++ " " ++ t) : stack) input
 sr (Word w : Text t : stack) input = sr (Text (t ++ " " ++ w) : stack) input 
 sr (PA (Bold x) : Text t : stack) input = sr (Comb [Text t, PA (Bold x)] : stack) input
-
---Handing Paragraph Tags
-sr (Text t : NewLine : NewLine : stack) input = sr (PA (P [Text t]) : NewLine : NewLine : stack) input
-sr (Word w : NewLine : NewLine : stack) input = sr (PA (P [Word w]) : NewLine : NewLine : stack) input
-sr (Text t : PA (P x) : stack) input = sr (PA (P (x ++ [Text t])) : stack) input
-sr (Text t : NewLine : PA (P x) : stack) input = sr (PA (P (x ++ [Text t])) : stack) input
-sr (Word w : PA (P x) : stack) input = sr (PA (P (x ++ [Word w])) : stack) input
-sr (Word w : NewLine : PA (P x) : stack) input = sr (PA (P (x ++ [Word w])) : stack) input
-sr (PA (Bold x) : NewLine : NewLine : stack) input = sr (PA (P [PA (Bold x)]) : NewLine : NewLine : stack) input
-sr (PA (EM x) : NewLine : NewLine : stack) input = sr (PA (P [PA (EM x)]) : NewLine : NewLine : stack) input
-sr (PA BR : PA (P (x)) : stack) input = sr (PA (P (x ++ [PA BR])) : stack) input
 
 --Bold and Emphasis 
 sr (TA : Text t : TA : stack) input = sr (PA (Bold [PA (EM [Text t])]) : stack) input
@@ -100,7 +86,7 @@ sr (PA t : PA (H4 h) : stack) input = sr (PA (H4 (h ++ [PA t])) : stack) input
 --Handling H3 Tag
 sr (Text s : Hash : Hash : Hash : stack) input = sr (PA (H3 [Text s]) : stack) input
 sr (Word w : PA (H3 [Text t]) : stack) input = sr (PA (H3 [Text (t ++ " " ++ w)]) : stack) input
-sr (PA t : PA (H2 h) : stack) input = sr (PA (H3 (h ++ [PA t])) : stack) input
+sr (PA t : PA (H3 h) : stack) input = sr (PA (H3 (h ++ [PA t])) : stack) input
 
 --Handling H2 Tag
 sr (Text s : Hash : Hash : stack) input = sr (PA (H2 [Text s]) : stack) input
@@ -114,11 +100,43 @@ sr (PA t : PA (H1 h) : stack) input = sr (PA (H1 (h ++ [PA t])) : stack) input
 
 --Handling Blockquotes
 sr (Text t : BB : stack) input = sr (PA (Block [Text t]) : stack) input
-sr (Text t : PA (Block x) : stack) input = sr (PA (Block (x ++ [Text t])) : stack) input
+--sr (Text t : PA (Block x) : stack) input = sr (PA (Block (x ++ [Text t])) : stack) input
 sr (Word w : PA (Block [Text t]) : stack) input = sr (PA (Block [Text (t ++ " " ++ w)]) : stack) input
 sr (Word w : PA (Block [Word t]) : stack) input = sr (PA (Block [Text (t ++ " " ++ w)]) : stack) input
-sr (PA (Block b2) : NewLine : PA (Block b1) : stack) input = sr (PA (Block (b1 ++ b2)) : stack) input
+sr (PA (Block [Text t2]) : NewLine : PA (Block [Text t1]) : stack) input = sr (PA (Block [Text (t1 ++ " " ++ t2)]) : stack) input
+
+--Nested Blockquote
 sr (PA (Block b2) : BB : NewLine : PA (Block b1) : stack) input = sr (PA (Block (b1 ++ [PA (Block b2)])) : stack) input
+sr (Text t2 : PA (Block [x, PA (Block [Text t1])]) : stack) input = sr (PA (Block [x, PA (Block [Text (t1 ++ " " ++ t2)])]) : stack) input
+sr (Word w : PA (Block [x, PA (Block [Text t])]) : stack) input = sr (PA (Block [x, PA (Block [Text (t ++ " " ++ w)])]) : stack) input
+
+--Ordered Lists
+sr (Word "1." : stack) input = sr (PA (OList [PA (LI [Word ""])]) : stack) input 
+sr (Word w2 : PA (OList [PA (LI [Word w1])]) : stack) input = sr (PA (OList [PA (LI [Text (w1 ++ w2)])]) : stack) input
+sr (Word w : PA (OList [PA (LI [Text t])]) : stack) input = sr (PA (OList [PA (LI [Text (t ++ " " ++ w)])]) : stack) input
+--Creating List Items
+sr (NewLine : Text t : NewLine : PA (OList xs) : stack) input = sr (NewLine : PA (OList (xs ++ [PA (LI [Text (dfw t)])])) : stack) input
+sr (NewLine : PA t : NewLine : PA (OList xs) :  stack) input = sr (NewLine : PA (OList (xs ++ [PA t])) : stack) input
+--Sub lists depth 2
+sr (NewLine : Text t : Tab : Tab : NewLine : PA (OList xs) : stack) input = sr (NewLine : PA (OList (xs ++ [PA (LI [Text (dfw t)])])) : stack) input
+sr (Word w : Tab : NewLine : PA (OList xs2) : Tab : Tab : NewLine : PA (OList xs1) : stack) input = sr (Word w : NewLine : PA (OList (xs1 ++ [PA (OList xs2)])) : stack) input
+sr (Word w : NewLine : PA (OList xs2) : Tab : Tab : NewLine : PA (OList xs1) : stack) input = sr (Word w : NewLine : PA (OList (xs1 ++ [PA (OList xs2)])) : stack) input
+--Sub lists
+sr (NewLine : Text t : Tab : NewLine : PA (OList xs) : stack) input = sr (NewLine : PA (OList (xs ++ [PA (LI [Text (dfw t)])])) : stack) input
+sr (Word w : NewLine : PA (OList xs2) : Tab : NewLine : PA (OList xs1) : stack) input = sr (Word w : NewLine : PA (OList (xs1 ++ [PA (OList xs2)])) : stack) input
+
+
+
+--Handing Paragraph Tags
+sr (Text t : NewLine : NewLine : stack) input = sr (PA (P [Text t]) : NewLine : NewLine : stack) input
+sr (Word w : NewLine : NewLine : stack) input = sr (PA (P [Word w]) : NewLine : NewLine : stack) input
+sr (Text t : PA (P x) : stack) input = sr (PA (P (x ++ [Text t])) : stack) input
+sr (Text t : NewLine : PA (P x) : stack) input = sr (PA (P (x ++ [Text t])) : stack) input
+sr (Word w : PA (P x) : stack) input = sr (PA (P (x ++ [Word w])) : stack) input
+sr (Word w : NewLine : PA (P x) : stack) input = sr (PA (P (x ++ [Word w])) : stack) input
+sr (PA (Bold x) : NewLine : NewLine : stack) input = sr (PA (P [PA (Bold x)]) : NewLine : NewLine : stack) input
+sr (PA (EM x) : NewLine : NewLine : stack) input = sr (PA (P [PA (EM x)]) : NewLine : NewLine : stack) input
+sr (PA BR : PA (P (x)) : stack) input = sr (PA (P (x ++ [PA BR])) : stack) input
 
 --Handling overall/HTML Tag
 sr (RHTML : stack) input = sr (HTML [] : stack) input
@@ -130,6 +148,10 @@ sr (HTML xs : NewLine : stack) input = sr (HTML (NewLine : xs) : stack) input
 --Stack operations
 sr stack    (i:input) = sr (i:stack) input 
 sr stack [] = stack 
+
+dfw :: String -> String 
+dfw (x:xs)  | x == ' ' = xs 
+            | otherwise = dfw xs 
 
 lexer :: String -> [Exp] 
 lexer s = map classify (words (preproc s)) 
@@ -155,6 +177,8 @@ convert (PA (H5 x) : xs) = "<h5>" ++ convert x ++ "</h5>" ++ convert xs
 convert (PA (H6 x) : xs) = "<h6>" ++ convert x ++ "</h6>" ++ convert xs
 convert (PA (P x) : xs) = "<p>" ++ convert x ++ "</p>" ++ convert xs
 convert (PA (Block x) : xs) = "<blockquote>" ++ convert x ++ "</blockquote>" ++ convert xs
+convert (PA (OList xs) : xss) = "<ol>\n" ++ convert xs ++ "</ol>" ++ convert xss 
+convert (PA (LI x) : xs) = "<li>" ++ convert x ++ "</li>\n" ++ convert xs
 
 main :: IO ()
 main = do 
@@ -162,6 +186,7 @@ main = do
     filename <- getLine 
     contents <- readFile (filename ++ ".md")
     let analyzed = lexer contents 
+    print analyzed
     -- putStrLn "Here is the result of lexical analysis: "
     -- putStrLn (show analyzed)
     -- putStrLn "-------------------------------"
