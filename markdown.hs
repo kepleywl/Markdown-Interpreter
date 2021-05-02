@@ -128,13 +128,18 @@ sr (Word w : NewLine : PA (OList xs2) : Tab : Tab : NewLine : PA (OList xs1) : s
 --Sub lists
 sr (NewLine : Text t : Tab : NewLine : PA (OList xs) : stack) input = sr (NewLine : PA (OList (xs ++ [PA (LI [Text (dfw t)])])) : stack) input
 sr (Word w : NewLine : PA (OList xs2) : Tab : NewLine : PA (OList xs1) : stack) input = sr (Word w : NewLine : PA (OList (xs1 ++ [PA (OList xs2)])) : stack) input
+--Elements within ordered list
+sr (NewLine : Text t : Tab : NewLine : NewLine : PA (OList xs) : stack) input = sr (PA (OList (xs ++ [PA (P [Text t])])) : stack) input 
+sr (NewLine : PA p : Tab : NewLine : NewLine : PA (OList xs) : stack) input = sr (PA (OList (xs ++ [PA p])) : stack) input
+--Unordered list within ordered list
+sr (NewLine : Text t : AA : Tab : NewLine : PA (UList ys) : Tab : NewLine : PA (OList xs) : stack) input = sr (NewLine : PA (UList (ys ++ [PA (LI [Text t])])) : Tab : NewLine : PA (OList xs) : stack) input
+sr (Word w: NewLine : PA (UList ys) : Tab : NewLine : PA (OList xs) : stack) input = sr (Word w :NewLine : PA (OList (xs ++ [PA (UList ys)])) : stack) input
 
 
 --Unordered Sub lists depth 2
 sr (NewLine : Text t : AA : Tab : Tab : NewLine : PA (UList ys) : Tab : Tab : NewLine : PA (UList xs) : stack) input = sr (NewLine : PA (UList (ys ++ [PA (LI [Text t])])) : Tab : Tab : NewLine : PA (UList xs) : stack) input
 sr (AA : NewLine : PA (UList ys) : Tab : Tab : NewLine : PA (UList xs) : stack) input = sr (AA : NewLine : PA (UList (xs ++ [PA (UList ys)])) : stack) input
 sr (AA : Tab : NewLine : PA (UList ys) : Tab : Tab : NewLine : PA (UList xs) : stack) input = sr (AA : Tab : NewLine : PA (UList (xs ++ [PA (UList ys)])) : stack) input
-
 --Unordered Sub lists
 sr (NewLine : Text t : AA : Tab : NewLine : PA (UList ys) : Tab : NewLine : PA (UList xs) : stack) input = sr (NewLine : PA (UList (ys ++ [PA (LI [Text t])])) : Tab : NewLine : PA (UList xs) : stack) input
 sr (AA : NewLine : PA (UList ys) : Tab : NewLine : PA (UList xs) : stack) input = sr (AA : NewLine : PA (UList (xs ++ [PA (UList ys)])) : stack) input
@@ -147,9 +152,8 @@ sr (Word w : PA (LI [Text t]) : stack) input = sr (PA (LI [Text (t ++ " " ++ w)]
 sr (NewLine : PA (LI ys) : PA (UList xs) : stack) input = sr (NewLine : PA (UList (xs ++ [PA (LI ys)])) : stack) input 
 --Elements within lists
 sr (NewLine : Text t : Tab : NewLine : NewLine : PA (UList xs) : stack) input = sr (PA (UList (xs ++ [PA (P [Text t])])) : stack) input 
-
-
-
+sr (NewLine : PA p : Tab : NewLine : NewLine : PA (UList xs) : stack) input = sr (PA (UList (xs ++ [PA p])) : stack) input
+sr (NewLine : PA p : Tab : NewLine : PA (UList xs) : stack) input = sr (NewLine : PA (UList (xs ++ [PA p])) : stack) input 
 
 
 --Handing Paragraph Tags
@@ -175,6 +179,9 @@ sr (HTML xs : Tab : stack) input = sr (HTML (Tab : xs) : stack) input
 --Stack operations
 sr stack    (i:input) = sr (i:stack) input 
 sr stack [] = stack 
+
+-- srl :: [Exp] -> [Exp] -> [Exp]
+-- srl 
 
 dfw :: String -> String 
 dfw (x:xs)  | x == ' ' = xs 
@@ -204,7 +211,7 @@ convert (PA (H4 x) : xs) = "<h4>" ++ convert x ++ "</h4>" ++ convert xs
 convert (PA (H5 x) : xs) = "<h5>" ++ convert x ++ "</h5>" ++ convert xs
 convert (PA (H6 x) : xs) = "<h6>" ++ convert x ++ "</h6>" ++ convert xs
 convert (PA (P x) : xs) = "<p>" ++ convert x ++ "</p>\n" ++ convert xs
-convert (PA (Block x) : xs) = "<blockquote>" ++ convert x ++ "</blockquote>" ++ convert xs
+convert (PA (Block x) : xs) = "<blockquote>" ++ convert x ++ "</blockquote>\n" ++ convert xs
 convert (PA (OList xs) : xss) = "<ol>\n" ++ convert xs ++ "</ol>\n" ++ convert xss 
 convert (PA (UList xs) : xss) = "<ul>\n" ++ convert xs ++ "</ul>\n" ++ convert xss
 convert (PA (LI x) : xs) = "<li>" ++ convert x ++ "</li>\n" ++ convert xs
@@ -215,7 +222,7 @@ main = do
     filename <- getLine 
     contents <- readFile (filename ++ ".md")
     let analyzed = lexer contents 
-    --print analyzed
+    print analyzed
     -- putStrLn "Here is the result of lexical analysis: "
     -- putStrLn (show analyzed)
     -- putStrLn "-------------------------------"
@@ -223,7 +230,7 @@ main = do
     -- putStrLn "Here is the result of parsing: "
     -- putStrLn (show parsed)
     -- let program = createProgram parsed
-    print parsed
+    --print parsed
     let html = convert parsed 
     writeFile (filename ++ ".html") html
-    putStrLn (show parsed)
+    --putStrLn (show parsed)
