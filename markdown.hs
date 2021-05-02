@@ -3,12 +3,13 @@
 -}
 
 data Tag =  H1 [Exp] | H2 [Exp] | H3 [Exp] | H4 [Exp] | H5 [Exp] 
-            | H6 [Exp] | Par [Exp] | Bold [Exp] | Under [Exp] | OList [Exp] 
+            | H6 [Exp] | Bold [Exp] | OList [Exp] | Block [Exp]
             | UList [Exp] | LI [Exp] | P [Exp] | BR | EM [Exp]
             deriving Show
 
 data Exp =  Text String | Hash | Word String | PA Tag | Comb [Exp]
-            | HTML [Exp] | LHTML | RHTML | NewLine | DA | AA
+            | HTML [Exp] | LHTML | RHTML | NewLine | DA | AA | TA 
+            | BB
             deriving Show
 
 
@@ -16,10 +17,14 @@ type HTML = [Exp]
 
 preproc :: String -> String 
 preproc [] = [] 
+preproc ('*' : '*' : '*' : xs) = " *** " ++ preproc xs
+preproc ('_' : '_' : '_' : xs) = " ___ " ++ preproc xs
 preproc ('*' : '*' : xs) = " ** " ++ preproc xs
 preproc ('_' : '_' : xs) = " __ " ++ preproc xs
 preproc ('*' : xs) = " * " ++ preproc xs
+preproc ('_' : xs) = " _ " ++ preproc xs
 preproc ('#' : xs) = " # " ++ preproc xs 
+preproc ('>' : xs) = " > " ++ preproc xs
 preproc (' ' : ' ' : '\n' : xs) = " <br> " ++ preproc xs 
 preproc ('\n' : xs) = " \\n " ++ preproc xs
 preproc (x : xs) = x : preproc xs
@@ -33,11 +38,15 @@ classify :: String -> Exp
 -- classify ('#':'#':s) = H2 (classify s)
 -- classify ('#':s) = H1 (classify s)
 classify "#" = Hash
+classify "***" = TA 
+classify "___" = TA
 classify "**" = DA
 classify "__" = DA
 classify "*" = AA
+classify "_" = AA 
 classify "\\n" = NewLine 
 classify "<br>" = PA (BR)
+classify ">" = BB
 
 classify s = Word s 
 
@@ -53,10 +62,16 @@ sr (PA (Bold x) : Text t : stack) input = sr (Comb [Text t, PA (Bold x)] : stack
 sr (Text t : NewLine : NewLine : stack) input = sr (PA (P [Text t]) : NewLine : NewLine : stack) input
 sr (Word w : NewLine : NewLine : stack) input = sr (PA (P [Word w]) : NewLine : NewLine : stack) input
 sr (Text t : PA (P x) : stack) input = sr (PA (P (x ++ [Text t])) : stack) input
+sr (Text t : NewLine : PA (P x) : stack) input = sr (PA (P (x ++ [Text t])) : stack) input
 sr (Word w : PA (P x) : stack) input = sr (PA (P (x ++ [Word w])) : stack) input
+sr (Word w : NewLine : PA (P x) : stack) input = sr (PA (P (x ++ [Word w])) : stack) input
 sr (PA (Bold x) : NewLine : NewLine : stack) input = sr (PA (P [PA (Bold x)]) : NewLine : NewLine : stack) input
 sr (PA (EM x) : NewLine : NewLine : stack) input = sr (PA (P [PA (EM x)]) : NewLine : NewLine : stack) input
 sr (PA BR : PA (P (x)) : stack) input = sr (PA (P (x ++ [PA BR])) : stack) input
+
+--Bold and Emphasis 
+sr (TA : Text t : TA : stack) input = sr (PA (Bold [PA (EM [Text t])]) : stack) input
+sr (TA : Word w : TA : stack) input = sr (PA (Bold [PA (EM [Word w])]) : stack) input 
 
 
 --Handling Bold Tag
@@ -97,6 +112,13 @@ sr (Text s : Hash : stack) input = sr (PA (H1 [Text s]) : stack) input
 sr (Word w : PA (H1 [Text t]) : stack) input = sr (PA (H1 [Text (t ++ " " ++ w)]) : stack) input
 sr (PA t : PA (H1 h) : stack) input = sr (PA (H1 (h ++ [PA t])) : stack) input
 
+--Handling Blockquotes
+sr (Text t : BB : stack) input = sr (PA (Block [Text t]) : stack) input
+sr (Text t : PA (Block x) : stack) input = sr (PA (Block (x ++ [Text t])) : stack) input
+sr (Word w : PA (Block [Text t]) : stack) input = sr (PA (Block [Text (t ++ " " ++ w)]) : stack) input
+sr (Word w : PA (Block [Word t]) : stack) input = sr (PA (Block [Text (t ++ " " ++ w)]) : stack) input
+sr (PA (Block b2) : NewLine : PA (Block b1) : stack) input = sr (PA (Block (b1 ++ b2)) : stack) input
+sr (PA (Block b2) : BB : NewLine : PA (Block b1) : stack) input = sr (PA (Block (b1 ++ [PA (Block b2)])) : stack) input
 
 --Handling overall/HTML Tag
 sr (RHTML : stack) input = sr (HTML [] : stack) input
@@ -132,6 +154,7 @@ convert (PA (H4 x) : xs) = "<h4>" ++ convert x ++ "</h4>" ++ convert xs
 convert (PA (H5 x) : xs) = "<h5>" ++ convert x ++ "</h5>" ++ convert xs
 convert (PA (H6 x) : xs) = "<h6>" ++ convert x ++ "</h6>" ++ convert xs
 convert (PA (P x) : xs) = "<p>" ++ convert x ++ "</p>" ++ convert xs
+convert (PA (Block x) : xs) = "<blockquote>" ++ convert x ++ "</blockquote>" ++ convert xs
 
 main :: IO ()
 main = do 
