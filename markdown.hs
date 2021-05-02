@@ -25,6 +25,8 @@ preproc ('*' : xs) = " * " ++ preproc xs
 preproc ('_' : xs) = " _ " ++ preproc xs
 preproc ('#' : xs) = " # " ++ preproc xs 
 preproc ('>' : xs) = " > " ++ preproc xs
+preproc ('-' : xs) = " - " ++ preproc xs
+preproc ('+' : xs) = " + " ++ preproc xs
 preproc (' ' : ' ' : '\n' : xs) = " <br> " ++ preproc xs 
 preproc ('\n' : xs) = " \\n " ++ preproc xs
 preproc ('\t' : xs) = " \\t " ++ preproc xs
@@ -39,6 +41,8 @@ classify "___" = TA
 classify "**" = DA
 classify "__" = DA
 classify "*" = AA
+classify "-" = AA
+classify "+" = AA
 classify "_" = AA 
 classify "\\n" = NewLine 
 classify "\\t" = Tab
@@ -119,11 +123,32 @@ sr (NewLine : Text t : NewLine : PA (OList xs) : stack) input = sr (NewLine : PA
 sr (NewLine : PA t : NewLine : PA (OList xs) :  stack) input = sr (NewLine : PA (OList (xs ++ [PA t])) : stack) input
 --Sub lists depth 2
 sr (NewLine : Text t : Tab : Tab : NewLine : PA (OList xs) : stack) input = sr (NewLine : PA (OList (xs ++ [PA (LI [Text (dfw t)])])) : stack) input
-sr (Word w : Tab : NewLine : PA (OList xs2) : Tab : Tab : NewLine : PA (OList xs1) : stack) input = sr (Word w : NewLine : PA (OList (xs1 ++ [PA (OList xs2)])) : stack) input
+sr (Word w : Tab : NewLine : PA (OList xs2) : Tab : Tab : NewLine : PA (OList xs1) : stack) input = sr (Word w : Tab : NewLine : PA (OList (xs1 ++ [PA (OList xs2)])) : stack) input
 sr (Word w : NewLine : PA (OList xs2) : Tab : Tab : NewLine : PA (OList xs1) : stack) input = sr (Word w : NewLine : PA (OList (xs1 ++ [PA (OList xs2)])) : stack) input
 --Sub lists
 sr (NewLine : Text t : Tab : NewLine : PA (OList xs) : stack) input = sr (NewLine : PA (OList (xs ++ [PA (LI [Text (dfw t)])])) : stack) input
 sr (Word w : NewLine : PA (OList xs2) : Tab : NewLine : PA (OList xs1) : stack) input = sr (Word w : NewLine : PA (OList (xs1 ++ [PA (OList xs2)])) : stack) input
+
+
+--Unordered Sub lists depth 2
+sr (NewLine : Text t : AA : Tab : Tab : NewLine : PA (UList ys) : Tab : Tab : NewLine : PA (UList xs) : stack) input = sr (NewLine : PA (UList (ys ++ [PA (LI [Text t])])) : Tab : Tab : NewLine : PA (UList xs) : stack) input
+sr (AA : NewLine : PA (UList ys) : Tab : Tab : NewLine : PA (UList xs) : stack) input = sr (AA : NewLine : PA (UList (xs ++ [PA (UList ys)])) : stack) input
+sr (AA : Tab : NewLine : PA (UList ys) : Tab : Tab : NewLine : PA (UList xs) : stack) input = sr (AA : Tab : NewLine : PA (UList (xs ++ [PA (UList ys)])) : stack) input
+
+--Unordered Sub lists
+sr (NewLine : Text t : AA : Tab : NewLine : PA (UList ys) : Tab : NewLine : PA (UList xs) : stack) input = sr (NewLine : PA (UList (ys ++ [PA (LI [Text t])])) : Tab : NewLine : PA (UList xs) : stack) input
+sr (AA : NewLine : PA (UList ys) : Tab : NewLine : PA (UList xs) : stack) input = sr (AA : NewLine : PA (UList (xs ++ [PA (UList ys)])) : stack) input
+--Creating Unordered Lists
+sr (NewLine : Text t : AA : stack) input = sr (NewLine : PA (UList [PA (LI [Text t])]) : stack) input
+--Creating List Items 
+sr (Word w : AA : NewLine : PA (UList xs) : stack) input = sr (PA (LI [Word w]) : PA (UList xs) : stack) input
+sr (Word w2 : PA (LI [Word w1]) : stack) input = sr (PA (LI [Text (w1 ++ " " ++ w2)]) : stack) input 
+sr (Word w : PA (LI [Text t]) : stack) input = sr (PA (LI [Text (t ++ " " ++ w)]) : stack) input 
+sr (NewLine : PA (LI ys) : PA (UList xs) : stack) input = sr (NewLine : PA (UList (xs ++ [PA (LI ys)])) : stack) input 
+--Elements within lists
+sr (NewLine : Text t : Tab : NewLine : NewLine : PA (UList xs) : stack) input = sr (PA (UList (xs ++ [PA (P [Text t])])) : stack) input 
+
+
 
 
 
@@ -143,6 +168,8 @@ sr (RHTML : stack) input = sr (HTML [] : stack) input
 sr (LHTML : stack) input = sr (stack) input
 sr (HTML xs : PA x : stack) input = sr (HTML (PA x:xs) : stack) input 
 sr (HTML xs : NewLine : stack) input = sr (HTML (NewLine : xs) : stack) input
+sr (HTML xs : Tab : stack) input = sr (HTML (Tab : xs) : stack) input
+--sr (HTML xs : Text t : stack) input = sr (HTML (Text t : xs) : stack) input
 --sr (HTML xs : PA t : NewLine : PA (H1 x) : stack) input = sr (HTML (PA (H1 x) : PA t : xs) : stack) input
 
 --Stack operations
@@ -164,6 +191,7 @@ parser input = case sr [] (LHTML : input ++ [RHTML]) of
 convert ::  HTML -> String 
 convert [] = ""
 convert (NewLine : xs) = "\n" ++ convert xs
+convert (Tab : xs) = "\t" ++ convert xs
 convert (Word w : xs) = w ++ " " ++ convert xs
 convert (Text t : xs) = t ++ convert xs
 convert (PA BR : xs) = "<br>" ++ convert xs
@@ -175,9 +203,10 @@ convert (PA (H3 x) : xs) = "<h3>" ++ convert x ++ "</h3>" ++ convert xs
 convert (PA (H4 x) : xs) = "<h4>" ++ convert x ++ "</h4>" ++ convert xs
 convert (PA (H5 x) : xs) = "<h5>" ++ convert x ++ "</h5>" ++ convert xs
 convert (PA (H6 x) : xs) = "<h6>" ++ convert x ++ "</h6>" ++ convert xs
-convert (PA (P x) : xs) = "<p>" ++ convert x ++ "</p>" ++ convert xs
+convert (PA (P x) : xs) = "<p>" ++ convert x ++ "</p>\n" ++ convert xs
 convert (PA (Block x) : xs) = "<blockquote>" ++ convert x ++ "</blockquote>" ++ convert xs
-convert (PA (OList xs) : xss) = "<ol>\n" ++ convert xs ++ "</ol>" ++ convert xss 
+convert (PA (OList xs) : xss) = "<ol>\n" ++ convert xs ++ "</ol>\n" ++ convert xss 
+convert (PA (UList xs) : xss) = "<ul>\n" ++ convert xs ++ "</ul>\n" ++ convert xss
 convert (PA (LI x) : xs) = "<li>" ++ convert x ++ "</li>\n" ++ convert xs
 
 main :: IO ()
@@ -186,7 +215,7 @@ main = do
     filename <- getLine 
     contents <- readFile (filename ++ ".md")
     let analyzed = lexer contents 
-    print analyzed
+    --print analyzed
     -- putStrLn "Here is the result of lexical analysis: "
     -- putStrLn (show analyzed)
     -- putStrLn "-------------------------------"
@@ -194,6 +223,7 @@ main = do
     -- putStrLn "Here is the result of parsing: "
     -- putStrLn (show parsed)
     -- let program = createProgram parsed
+    print parsed
     let html = convert parsed 
     writeFile (filename ++ ".html") html
     putStrLn (show parsed)
