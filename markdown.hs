@@ -103,27 +103,30 @@ sr (Word w : PA (H1 [Text t]) : stack) input = sr (PA (H1 [Text (t ++ " " ++ w)]
 sr (PA t : PA (H1 h) : stack) input = sr (PA (H1 (h ++ [PA t])) : stack) input
 
 --Handling Blockquotes
-sr (Text t : BB : stack) input = sr (PA (Block [Text t]) : stack) input
+sr (Word w : PA (Block [x, PA (Block [Text t])]) : stack) input = sr (PA (Block [x, PA (Block [Text (t ++ " " ++ w)])]) : stack) input
+sr (Word w : BB : NewLine : PA (Block b) : stack) input = sr (PA (Block (b ++ [Word w])) : stack) input 
+sr (Word w : BB : stack) input = sr (PA (Block [Text w]) : stack) input
 --sr (Text t : PA (Block x) : stack) input = sr (PA (Block (x ++ [Text t])) : stack) input
 sr (Word w : PA (Block [Text t]) : stack) input = sr (PA (Block [Text (t ++ " " ++ w)]) : stack) input
 sr (Word w : PA (Block [Word t]) : stack) input = sr (PA (Block [Text (t ++ " " ++ w)]) : stack) input
-sr (PA (Block [Text t2]) : NewLine : PA (Block [Text t1]) : stack) input = sr (PA (Block [Text (t1 ++ " " ++ t2)]) : stack) input
+sr (Word w : PA (Block b) : stack) input = sr (PA (Block (b ++ [Word w])) : stack) input 
+sr (PA p : PA (Block b) : stack) input = sr (PA (Block (b ++ [PA p])) : stack) input 
 
 --Nested Blockquote
 sr (PA (Block b2) : BB : NewLine : PA (Block b1) : stack) input = sr (PA (Block (b1 ++ [PA (Block b2)])) : stack) input
 sr (Text t2 : PA (Block [x, PA (Block [Text t1])]) : stack) input = sr (PA (Block [x, PA (Block [Text (t1 ++ " " ++ t2)])]) : stack) input
-sr (Word w : PA (Block [x, PA (Block [Text t])]) : stack) input = sr (PA (Block [x, PA (Block [Text (t ++ " " ++ w)])]) : stack) input
 
 --Lists
-sr (Word "1." : stack) input = sr (RList : stack) input 
---Creating List Items
-sr (Word w : PA (LI []) : stack) input  = sr (PA (LI [Text w]) : stack) input 
-sr (Word w : PA (LI [Text t]) : stack) input = sr (PA (LI [Text (t ++ " " ++ w)]) : stack) input 
-sr (Word w : RList : stack) input = sr (PA (LI []) : RList : stack) input 
---Ending Lists
-sr (NewLine : NewLine : stack) input = sr (PA (OList []) : stack) input
-sr (PA (OList xs) : PA p : stack) input = sr (PA (OList (PA p : xs)) : stack) input 
-sr (PA (OList xs) : RList : stack) input = sr (NewLine : NewLine : PA (OList xs) : stack) input
+sr (Word "1." : stack) input = sr (NewLine : NewLine : head out : stack) (tail out)
+    where out = srol [Word "1."] input 
+-- --Creating List Items
+-- sr (Word w : PA (LI []) : stack) input  = sr (PA (LI [Text w]) : stack) input 
+-- sr (Word w : PA (LI [Text t]) : stack) input = sr (PA (LI [Text (t ++ " " ++ w)]) : stack) input 
+-- sr (Word w : RList : stack) input = sr (PA (LI []) : RList : stack) input 
+-- --Ending Lists
+-- sr (NewLine : NewLine : stack) input = sr (PA (OList []) : stack) input
+-- sr (PA (OList xs) : PA p : stack) input = sr (PA (OList (PA p : xs)) : stack) input 
+-- sr (PA (OList xs) : RList : stack) input = sr (NewLine : NewLine : PA (OList xs) : stack) input
 
 
 --Handing Paragraph Tags
@@ -150,23 +153,43 @@ sr (HTML xs : Tab : stack) input = sr (HTML (Tab : xs) : stack) input
 sr stack    (i:input) = sr (i:stack) input 
 sr stack [] = stack 
 
-srol :: [Exp] -> [Exp] -> [Exp] -> [Exp] 
+srol :: [Exp] -> [Exp] -> [Exp]
 --SubLists
-srol (Word "1." : Tab : NewLine : stack) input mem = srol [Word "1."] input mem 
+srol (Word "1." : Tab : NewLine : stack) input = srol (RList : head out : stack) (tail out)
+    where out = srol2 [Word "1."] input
 --Creating List Items
-srol (Word w : PA (LI []) : stack) input mem = srol (PA (LI [Text w]) : stack) input mem 
-srol (Word w : PA (LI [Text t]) : stack) input mem = srol (PA (LI [Text (t ++ " " ++ w)]) : stack) input mem
-srol (Word w : stack) input mem = srol (PA (LI []) : stack) input mem 
+srol (Word w : PA (LI []) : stack) input = srol (PA (LI [Text w]) : stack) input 
+srol (Word w : PA (LI [Text t]) : stack) input = srol (PA (LI [Text (t ++ " " ++ w)]) : stack) input
+srol (Word w : stack) input = srol (PA (LI []) : stack) input
 
 
 --Ending Lists
-srol (NewLine : NewLine : stack) input mem = srol (PA (OList []) : stack) input mem 
-srol (PA (OList xs) : PA p : stack) input mem = srol (PA (OList (PA p : xs)) : stack) input mem 
-srol [PA (OList xs)] input mem = sr (NewLine : NewLine : PA (OList xs) : mem) input
+srol (NewLine : NewLine : stack) input = srol (PA (OList []) : stack) input
+srol (PA (OList xs) : PA p : stack) input = srol (PA (OList (PA p : xs)) : stack) input
+srol (PA (OList xs) : NewLine : stack) input = srol (PA (OList xs) : stack) input
+srol (PA (OList xs) : RList : stack) input = srol (PA (OList xs) : stack) input
+srol [PA (OList xs)] input =  PA (OList xs) : input
 
 --Stack operations
-srol stack    (i:input) mem = srol (i:stack) input mem
---srol stack input mem = sr (stack ++ mem) input 
+srol stack    (i:input) = srol (i:stack) input 
+
+srol2 :: [Exp] -> [Exp] -> [Exp]
+--Ending Lists
+srol2 (NewLine : NewLine : stack) input = srol2 (PA (OList []) : stack) input
+srol2 (Word w : NewLine : stack) input = srol2 (PA (OList []) : stack) (Word w : input)
+srol2 (PA (OList xs) : PA p : stack) input = srol2 (PA (OList (PA p : xs)) : stack) input
+srol2 (PA (OList xs) : NewLine : stack) input = srol2 (PA (OList xs) : stack) input
+srol2 (PA (OList xs) : Tab : stack) input = srol2 (PA (OList xs) : stack) input
+srol2 [PA (OList xs)] input =  PA (OList xs) : input
+
+--Creating List Items
+srol2 (Word w : PA (LI []) : stack) input = srol2 (PA (LI [Text w]) : stack) input 
+srol2 (Word w : PA (LI [Text t]) : stack) input = srol2 (PA (LI [Text (t ++ " " ++ w)]) : stack) input
+srol2 (Word w : stack) input = srol2 (PA (LI []) : stack) input
+
+--Stack operations
+srol2 stack    (i:input) = srol2 (i:stack) input 
+--srol2 stack input mem = sr (stack ++ mem) input 
 
 -- --Unordered Sub lists depth 2
 -- srl (NewLine : Text t : AA : Tab : Tab : NewLine : PA (UList ys) : Tab : Tab : NewLine : PA (UList xs) : stack) input = srl (NewLine : PA (UList (ys ++ [PA (LI [Text t])])) : Tab : Tab : NewLine : PA (UList xs) : stack) input
