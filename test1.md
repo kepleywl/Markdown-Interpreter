@@ -34,11 +34,7 @@ Lorem Ipsum dolorem
 * First Item Unordered
 * Second Item Unordered
     * Sub Unordered List
-        * Sub Sub Unordered 1
-        * Sub Sub Unordered 2 
     * Second sub unordered
-        * Sub Sub second 
-        * Sub Sub second 2
 * Third Unordered Item
 
 
@@ -63,9 +59,4 @@ Lorem Ipsum dolorem
     - Indented item
 4. Fourth item
 
-* First item 
-* Second Item
-    1. List
-    2. List2
-* Third Item
 
