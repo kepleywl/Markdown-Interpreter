@@ -129,6 +129,7 @@ sr (Word w : NewLine : PA (OList xs2) : Tab : Tab : NewLine : PA (OList xs1) : s
 sr (NewLine : Text t : Tab : NewLine : PA (OList xs) : stack) input = sr (NewLine : PA (OList (xs ++ [PA (LI [Text (dfw t)])])) : stack) input
 sr (Word w : NewLine : PA (OList xs2) : Tab : NewLine : PA (OList xs1) : stack) input = sr (Word w : NewLine : PA (OList (xs1 ++ [PA (OList xs2)])) : stack) input
 --Elements within ordered list
+sr (PA (EM xs) : PA (OList xss) : stack) input = sr (PA (OList (xss ++ [PA (EM xs)])) : stack) input
 sr (NewLine : Text t : Tab : NewLine : NewLine : PA (OList xs) : stack) input = sr (PA (OList (xs ++ [PA (P [Text t])])) : stack) input 
 sr (NewLine : PA p : Tab : NewLine : NewLine : PA (OList xs) : stack) input = sr (PA (OList (xs ++ [PA p])) : stack) input
 --Unordered list within ordered list
@@ -136,10 +137,6 @@ sr (NewLine : Text t : AA : Tab : NewLine : PA (UList ys) : Tab : NewLine : PA (
 sr (Word w: NewLine : PA (UList ys) : Tab : NewLine : PA (OList xs) : stack) input = sr (Word w :NewLine : PA (OList (xs ++ [PA (UList ys)])) : stack) input
 
 
---Unordered Sub lists depth 2
-sr (NewLine : Text t : AA : Tab : Tab : NewLine : PA (UList ys) : Tab : Tab : NewLine : PA (UList xs) : stack) input = sr (NewLine : PA (UList (ys ++ [PA (LI [Text t])])) : Tab : Tab : NewLine : PA (UList xs) : stack) input
-sr (AA : NewLine : PA (UList ys) : Tab : Tab : NewLine : PA (UList xs) : stack) input = sr (AA : NewLine : PA (UList (xs ++ [PA (UList ys)])) : stack) input
-sr (AA : Tab : NewLine : PA (UList ys) : Tab : Tab : NewLine : PA (UList xs) : stack) input = sr (AA : Tab : NewLine : PA (UList (xs ++ [PA (UList ys)])) : stack) input
 --Unordered Sub lists
 sr (NewLine : Text t : AA : Tab : NewLine : PA (UList ys) : Tab : NewLine : PA (UList xs) : stack) input = sr (NewLine : PA (UList (ys ++ [PA (LI [Text t])])) : Tab : NewLine : PA (UList xs) : stack) input
 sr (AA : NewLine : PA (UList ys) : Tab : NewLine : PA (UList xs) : stack) input = sr (AA : NewLine : PA (UList (xs ++ [PA (UList ys)])) : stack) input
