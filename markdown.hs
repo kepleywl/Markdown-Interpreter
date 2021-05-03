@@ -4,7 +4,7 @@
 
 data Tag =  H1 [Exp] | H2 [Exp] | H3 [Exp] | H4 [Exp] | H5 [Exp] 
             | H6 [Exp] | Bold [Exp] | OList [Exp] | Block [Exp]
-            | UList [Exp] | LI [Exp] | P [Exp] | BR | EM [Exp]
+            | UList [Exp] | LI [Exp] | P [Exp] | BR | EM [Exp] | HR
             deriving Show
 
 data Exp =  Text String | Hash | Word String | PA Tag | Comb [Exp]
@@ -76,6 +76,9 @@ sr (DA : Word w : DA : stack) input = sr (PA (Bold [Word w]) : stack) input
 sr (AA : Comb b : AA : stack) input = sr (PA (EM [Comb b]) : stack) input
 sr (AA : Text t : AA : stack) input = sr (PA (EM [Text t]) : stack) input
 sr (AA : Word w : AA : stack) input = sr (PA (EM [Word w]) : stack) input
+
+--Horizontal Rule
+sr (NewLine : NewLine : TA : NewLine : NewLine : stack) input = sr (NewLine : NewLine : PA HR : NewLine : NewLine : stack) input
 
 --Handling H6 Tag
 sr (Text s : Hash : Hash : Hash : Hash : Hash : Hash : stack) input = sr (PA (H6 [Text s]) : stack) input
@@ -215,6 +218,7 @@ convert (Tab : xs) = "\t" ++ convert xs
 convert (Word w : xs) = w ++ " " ++ convert xs
 convert (Text t : xs) = t ++ convert xs
 convert (PA BR : xs) = "<br>" ++ convert xs
+convert (PA HR : xs) = "<hr>" ++ convert xs
 convert (PA (Bold b) : xs) = "<strong>" ++ convert b ++ "</strong>" ++ convert xs
 convert (PA (EM e) : xs) = "<em>" ++ convert e ++ "</em>" ++ convert xs
 convert (PA (H1 x) : xs) = "<h1>" ++ convert x ++ "</h1>" ++ convert xs
