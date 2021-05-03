@@ -31,41 +31,4 @@ Lorem Ipsum dolorem
 4. Fourth Item 
 
 
-* First Item Unordered
-* Second Item Unordered
-    * Sub Unordered List
-        * Sub Sub Unordered 1
-        * Sub Sub Unordered 2 
-    * Second sub unordered
-        * Sub Sub second 
-        * Sub Sub second 2
-* Third Unordered Item
-
-
-1. This is the first list item.
-2. Here's the second list item.
-
-    I need to add another paragraph below the second list item.
-
-3. And here's the third list item.
-
-1. This is the first list item.
-2. Here's the second list item.
-
-    > A blockquote would look great below the second list item.
-
-3. And here's the third list item.
-
-1. First item
-2. Second item
-3. Third item
-    - Indented item
-    - Indented item
-4. Fourth item
-
-* First item 
-* Second Item
-    1. List
-    2. List2
-* Third Item
 
