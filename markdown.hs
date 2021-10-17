@@ -123,6 +123,7 @@ sr (Text t2 : PA (Block [x, PA (Block [Text t1])]) : stack) input = sr (PA (Bloc
 sr (Word w : PA (Block [x, PA (Block [Text t])]) : stack) input = sr (PA (Block [x, PA (Block [Text (t ++ " " ++ w)])]) : stack) input
 
 -- --Sub lists depth 2
+sr (Tab : Tab : NewLine : PA (OList xs) : stack) input = sr (PA (OList []) : Tab : NewLine : PA (OList xs) : stack) input
 -- sr (NewLine : Text t : Tab : Tab : NewLine : PA (OList xs) : stack) input = sr (NewLine : PA (OList (xs ++ [PA (LI [Text (dfw t)])])) : stack) input
 -- sr (Word w : Tab : NewLine : PA (OList xs2) : Tab : Tab : NewLine : PA (OList xs1) : stack) input = sr (Word w : Tab : NewLine : PA (OList (xs1 ++ [PA (OList xs2)])) : stack) input
 -- sr (Word w : NewLine : PA (OList xs2) : Tab : Tab : NewLine : PA (OList xs1) : stack) input = sr (Word w : NewLine : PA (OList (xs1 ++ [PA (OList xs2)])) : stack) input
