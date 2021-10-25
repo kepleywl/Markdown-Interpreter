@@ -84,12 +84,18 @@ If you believe there are any issues with the current version of the parser appli
 
 If you believe that you have made improvements to the current version of the parser application I welcome you to submit a pull request on [GitHub](https://github.com/kepleywl/Markdown-Interpreter). If your request seems reasonable and improves the program I will be happy to push it to the current main repository.
 
+## Support
+
+If you find an issue with the project code feel free to create an [issue](https://github.com/kepleywl/Markdown-Interpreter/issues) using GitHub.
+
+For other inquiries feel free to contact me at kepleywl@appstate.edu.
+
 <br>
 
 ***
 
 <br>
 
-This repository is owned by user **kepleywl**.
+This repository is licensed under the GNU GPL license.
 
 Contact: kepleywl@appstate.edu
